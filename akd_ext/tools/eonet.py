@@ -106,9 +106,11 @@ class EONETEvent(BaseModel):
         description="Time-stamped geometries for this event.",
     )
 
-    bbox: tuple[float, float, float, float] | None = Field(
+    bbox: list[float] | None = Field(
         default=None,
-        description=("Derived envelope across all geometries in standard (min_lon, min_lat, max_lon, max_lat) order."),
+        min_length=4,
+        max_length=4,
+        description="Derived envelope across all geometries in standard (min_lon, min_lat, max_lon, max_lat) order.",
     )
     t_start: datetime | None = Field(
         default=None,
@@ -145,8 +147,10 @@ class EONETSearchInputSchema(InputSchema):
         default=None,
         description="End date (YYYY-MM-DD). Use with 'start'. Mutually exclusive with 'days'.",
     )
-    bbox: tuple[float, float, float, float] | None = Field(
+    bbox: list[float] | None = Field(
         default=None,
+        min_length=4,
+        max_length=4,
         description=(
             "Bounding box in standard (min_lon, min_lat, max_lon, max_lat) order. "
             "Translated to EONET's (minLon, maxLat, maxLon, minLat) request format internally."
@@ -216,8 +220,8 @@ def _flatten_positions(coords: Any) -> Iterable[tuple[float, float]]:
         yield from _flatten_positions(sub)
 
 
-def _compute_bbox(geometries: list[EONETGeometry]) -> tuple[float, float, float, float] | None:
-    """Compute (min_lon, min_lat, max_lon, max_lat) across all geometries; None if empty."""
+def _compute_bbox(geometries: list[EONETGeometry]) -> list[float] | None:
+    """Compute [min_lon, min_lat, max_lon, max_lat] across all geometries; None if empty."""
     lons: list[float] = []
     lats: list[float] = []
     for g in geometries:
@@ -226,7 +230,7 @@ def _compute_bbox(geometries: list[EONETGeometry]) -> tuple[float, float, float,
             lats.append(lat)
     if not lons:
         return None
-    return (min(lons), min(lats), max(lons), max(lats))
+    return [min(lons), min(lats), max(lons), max(lats)]
 
 
 @mcp_tool
