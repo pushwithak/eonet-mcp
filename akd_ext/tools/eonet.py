@@ -235,39 +235,29 @@ def _compute_bbox(geometries: list[EONETGeometry]) -> list[float] | None:
 
 @mcp_tool
 class EONETSearchTool(BaseTool[EONETSearchInputSchema, EONETSearchOutputSchema]):
-    """
-    Search NASA's EONET (Earth Observatory Natural Event Tracker) v3 for natural events.
+    """Search NASA's EONET (Earth Observatory Natural Event Tracker) v3 for natural events.
 
     EONET tracks ongoing and past natural events worldwide — wildfires, severe storms,
-    volcanoes, floods, earthquakes, sea/lake ice, landslides, drought, dust/haze,
-    snow, temperature extremes, water color anomalies, and manmade events. Event
-    metadata is sourced from authoritative providers (USGS, JTWC, InciWeb,
-    SI Volcano, etc.). The API is public; no authentication required.
+    volcanoes, floods, earthquakes, sea/lake ice, landslides, drought, dust/haze, snow,
+    temperature extremes, water color anomalies, and manmade events. Event metadata is
+    sourced from authoritative providers (USGS, JTWC, InciWeb, SI Volcano, etc.). Public
+    API, no authentication required.
 
-    This tool wraps the GET /events endpoint and returns parsed events with their
-    full geometry timeline plus derived helpers — bbox (in standard GeoJSON order),
-    t_start, and t_end — so downstream tools (CMR queries, Worldview deep links)
-    can consume the spatiotemporal envelope without parsing GeoJSON.
+    Returns parsed events with their full GeoJSON geometry timeline plus three derived
+    helpers — ``bbox`` (in standard ``(min_lon, min_lat, max_lon, max_lat)`` order),
+    ``t_start``, and ``t_end`` — so downstream consumers can use the spatiotemporal
+    envelope directly without parsing GeoJSON. ``results`` may be an empty list when no
+    events match the filters.
 
-    Input parameters (LLM-controllable per call):
-    - category: EONETCategory enum (wildfires, severeStorms, volcanoes, etc.). Omit for all.
-    - status: 'open' (default), 'closed', or 'all'.
-    - days: Restrict to events updated in the last N days (1-365). Mutually exclusive with start/end.
-    - start, end: Explicit date range (YYYY-MM-DD). Both required together.
-    - bbox: (min_lon, min_lat, max_lon, max_lat) — standard GeoJSON order; tool converts internally.
-    - limit: Max number of events (1-100, default 10).
-    - magnitude_id, magnitude_min, magnitude_max: Magnitude filtering (see EONET /magnitudes).
+    Input combinations to know about (full per-field details on the input schema):
+    - ``days`` and (``start``, ``end``) are mutually exclusive; ``start`` and ``end``
+      must be supplied together.
+    - ``magnitude_min`` / ``magnitude_max`` require ``magnitude_id``.
+    - ``bbox`` is supplied in standard GeoJSON order; the tool converts internally to
+      EONET's request format.
 
-    Configuration parameters (instance-level):
-    - base_url: EONET API base. Defaults to env EONET_BASE_URL or production.
-    - timeout: HTTP request timeout (default 30s).
-    - sources: Optional allowlist of upstream source IDs (e.g., ['InciWeb', 'USGS_EHP']).
-
-    Returns events with:
-    - id, title, description, link, closed (timestamp or None)
-    - categories (id+title), sources (id+url for provenance)
-    - geometry: list of time-stamped Point/Polygon observations with optional magnitude
-    - Derived: bbox in (min_lon, min_lat, max_lon, max_lat) order, t_start, t_end
+    Does not fetch upstream source content (``sources[].url`` are pointers), does not
+    subscribe or poll, and does not render maps.
     """
 
     input_schema = EONETSearchInputSchema
